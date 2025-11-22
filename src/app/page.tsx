@@ -1,3 +1,5 @@
+
+"use client";
 import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
@@ -5,9 +7,21 @@ import { Card, CardContent } from '@/components/ui/card';
 import { placeholderProducts } from '@/lib/placeholder-data';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { ArrowRight, Hammer, Brush, Ruler } from 'lucide-react';
+import { useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, limit } from 'firebase/firestore';
+import { useFirestore } from '@/firebase';
+import type { Product } from '@/lib/types';
+
 
 export default function Home() {
-  const featuredProducts = placeholderProducts.slice(0, 3);
+  const firestore = useFirestore();
+  const productsCollection = collection(firestore, 'products');
+
+  const featuredProductsQuery = useMemoFirebase(() => {
+    return query(productsCollection, limit(3));
+  }, [productsCollection]);
+
+  const { data: featuredProducts, isLoading } = useCollection<Product>(featuredProductsQuery);
   const heroImage = PlaceHolderImages.find(p => p.id === 'hero-1');
 
   return (
@@ -91,12 +105,13 @@ export default function Home() {
               Discover a selection of our most popular handcrafted items.
             </p>
             <div className="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {featuredProducts.map((product) => {
+              {isLoading && <p>Loading...</p>}
+              {featuredProducts && featuredProducts.map((product) => {
                 const productImage = PlaceHolderImages.find(p => p.id === product.imageId);
                 return (
                 <Card key={product.id} className="overflow-hidden group transform transition-all duration-300 hover:shadow-xl hover:-translate-y-2">
                   <CardContent className="p-0">
-                    {productImage && (
+                    {productImage ? (
                         <div className="relative h-64 w-full">
                             <Image
                                 src={productImage.imageUrl}
@@ -106,6 +121,8 @@ export default function Home() {
                                 data-ai-hint={productImage.imageHint}
                             />
                         </div>
+                    ): (
+                       <div className="relative h-64 w-full bg-muted" />
                     )}
                     <div className="p-6">
                       <h3 className="text-xl font-headline font-semibold">{product.name}</h3>

@@ -2,12 +2,12 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { cn } from '@/lib/utils';
 import { Toaster } from '@/components/ui/toaster';
-import { ThemeProvider } from '@/components/theme-provider';
 import { AuthProvider } from '@/context/auth-provider';
 import { CartProvider } from '@/context/cart-provider';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
 import './globals.css';
+import { FirebaseClientProvider } from '@/firebase';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -33,7 +33,7 @@ export default function RootLayout({
           inter.variable
         )}
       >
-        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <FirebaseClientProvider>
           <AuthProvider>
             <CartProvider>
               <div className="relative flex min-h-screen flex-col">
@@ -44,7 +44,7 @@ export default function RootLayout({
               <Toaster />
             </CartProvider>
           </AuthProvider>
-        </ThemeProvider>
+        </FirebaseClientProvider>
       </body>
     </html>
   );

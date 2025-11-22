@@ -1,13 +1,15 @@
+
 "use client";
 
 import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { placeholderProducts } from "@/lib/placeholder-data";
-import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { useCart } from "@/hooks/use-cart";
 import { useToast } from "@/hooks/use-toast";
 import type { Product } from "@/lib/types";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection } from "firebase/firestore";
+import { PlaceHolderImages } from "@/lib/placeholder-images";
 
 function ProductCard({ product }: { product: Product }) {
   const { dispatch } = useCart();
@@ -25,7 +27,7 @@ function ProductCard({ product }: { product: Product }) {
   return (
     <Card className="overflow-hidden group transform transition-all duration-300 hover:shadow-xl hover:-translate-y-2 flex flex-col">
       <CardContent className="p-0 flex flex-col flex-grow">
-        {productImage && (
+        {productImage ? (
           <div className="relative h-64 w-full">
             <Image
               src={productImage.imageUrl}
@@ -36,6 +38,8 @@ function ProductCard({ product }: { product: Product }) {
               data-ai-hint={productImage.imageHint}
             />
           </div>
+        ) : (
+          <div className="relative h-64 w-full bg-muted" />
         )}
         <div className="p-6 flex flex-col flex-grow">
           <h3 className="text-xl font-headline font-semibold">{product.name}</h3>
@@ -51,6 +55,10 @@ function ProductCard({ product }: { product: Product }) {
 }
 
 export default function ProductsPage() {
+    const firestore = useFirestore();
+    const productsCollection = useMemoFirebase(() => collection(firestore, 'products'), [firestore]);
+    const { data: products, isLoading } = useCollection<Product>(productsCollection);
+
   return (
     <div className="container mx-auto px-4 py-16">
       <div className="text-center mb-12">
@@ -59,8 +67,9 @@ export default function ProductsPage() {
           Browse our collection of handcrafted wooden goods. Each piece is made with care and built to last.
         </p>
       </div>
+       {isLoading && <p>Loading products...</p>}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-        {placeholderProducts.map((product) => (
+        {products && products.map((product) => (
           <ProductCard key={product.id} product={product} />
         ))}
       </div>

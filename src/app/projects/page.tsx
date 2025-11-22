@@ -1,10 +1,19 @@
+
+"use client";
 import Image from "next/image";
 import { Card, CardContent, CardFooter, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { placeholderProjects } from "@/lib/placeholder-data";
-import { PlaceHolderImages } from "@/lib/placeholder-images";
 import { format } from "date-fns";
+import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
+import { collection } from "firebase/firestore";
+import type { Project } from "@/lib/types";
+import { PlaceHolderImages } from "@/lib/placeholder-images";
+
 
 export default function ProjectsPage() {
+    const firestore = useFirestore();
+    const projectsCollection = useMemoFirebase(() => collection(firestore, 'projects'), [firestore]);
+    const { data: projects, isLoading } = useCollection<Project>(projectsCollection);
+
   return (
     <div className="container mx-auto px-4 py-16">
       <div className="text-center mb-12">
@@ -13,12 +22,13 @@ export default function ProjectsPage() {
           A showcase of our custom work, from bespoke furniture to large-scale installations.
         </p>
       </div>
+      {isLoading && <p>Loading projects...</p>}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {placeholderProjects.map((project) => {
+        {projects && projects.map((project) => {
           const projectImage = PlaceHolderImages.find(p => p.id === project.imageId);
           return (
           <Card key={project.id} className="overflow-hidden group transform transition-all duration-300 hover:shadow-xl hover:-translate-y-2">
-             {projectImage && (
+             {projectImage ? (
               <div className="relative h-80 w-full">
                 <Image
                   src={projectImage.imageUrl}
@@ -29,6 +39,8 @@ export default function ProjectsPage() {
                   data-ai-hint={projectImage.imageHint}
                 />
               </div>
+            ) : (
+                <div className="relative h-80 w-full bg-muted" />
             )}
             <CardHeader>
               <CardTitle className="font-headline text-2xl">{project.name}</CardTitle>
