@@ -4,12 +4,12 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { ArrowRight, Hammer, Brush, Ruler } from 'lucide-react';
 import { useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, limit } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import type { Product } from '@/lib/types';
+import { Skeleton } from '@/components/ui/skeleton';
 
 
 export default function Home() {
@@ -21,23 +21,21 @@ export default function Home() {
   }, [productsCollection]);
 
   const { data: featuredProducts, isLoading } = useCollection<Product>(featuredProductsQuery);
-  const heroImage = PlaceHolderImages.find(p => p.id === 'hero-1');
 
   return (
     <div className="flex flex-col min-h-screen">
       <main className="flex-1">
         {/* Hero Section */}
         <section className="relative w-full h-[60vh] md:h-[80vh] text-primary-foreground">
-          {heroImage && (
+          
             <Image
-              src={heroImage.imageUrl}
-              alt={heroImage.description}
+              src="https://picsum.photos/seed/hero/1200/800"
+              alt="Hero image of custom wood designs"
               fill
               className="object-cover"
               priority
-              data-ai-hint={heroImage.imageHint}
+              data-ai-hint="woodworking hero"
             />
-          )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent" />
           <div className="relative h-full flex flex-col items-center justify-center text-center p-4">
             <div className="bg-black/40 p-8 rounded-lg backdrop-blur-sm">
@@ -104,35 +102,55 @@ export default function Home() {
               Discover a selection of our most popular handcrafted items.
             </p>
             <div className="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {isLoading && <p>Loading...</p>}
-              {featuredProducts && featuredProducts.map((product) => (
-                <Card key={product.id} className="overflow-hidden group transform transition-all duration-300 hover:shadow-xl hover:-translate-y-2">
-                  <CardContent className="p-0">
-                    {product.imageUrl ? (
-                        <div className="relative h-64 w-full">
-                            <Image
-                                src={product.imageUrl}
-                                alt={product.name}
-                                fill
-                                className="object-cover"
-                            />
+              {isLoading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <Card key={i} className="overflow-hidden">
+                    <CardContent className="p-0">
+                      <Skeleton className="h-64 w-full" />
+                      <div className="p-6 space-y-3">
+                        <Skeleton className="h-6 w-3/4" />
+                        <Skeleton className="h-4 w-full" />
+                        <Skeleton className="h-4 w-1/2" />
+                        <div className="mt-4 flex justify-between items-center">
+                          <Skeleton className="h-8 w-1/3" />
+                          <Skeleton className="h-10 w-1/3" />
                         </div>
-                    ): (
-                       <div className="relative h-64 w-full bg-muted" />
-                    )}
-                    <div className="p-6">
-                      <h3 className="text-xl font-headline font-semibold">{product.name}</h3>
-                      <p className="mt-2 text-muted-foreground text-sm">{product.description}</p>
-                      <div className="mt-4 flex justify-between items-center">
-                        {product.price && <p className="text-lg font-bold text-primary">${product.price.toFixed(2)}</p>}
-                        <Button asChild variant="outline">
-                          <Link href={`/products`}>View Details</Link>
-                        </Button>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))}
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                featuredProducts && featuredProducts.map((product) => (
+                  <Card key={product.id} className="overflow-hidden group transform transition-all duration-300 hover:shadow-xl hover:-translate-y-2">
+                    <CardContent className="p-0">
+                      {product.imageUrl ? (
+                          <div className="relative h-64 w-full">
+                              <Image
+                                  src={product.imageUrl}
+                                  alt={product.name}
+                                  fill
+                                  className="object-cover"
+                              />
+                          </div>
+                      ): (
+                        <div className="relative h-64 w-full bg-muted flex items-center justify-center">
+                          <Hammer className="w-16 h-16 text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="p-6">
+                        <h3 className="text-xl font-headline font-semibold">{product.name}</h3>
+                        <p className="mt-2 text-muted-foreground text-sm h-10 overflow-hidden">{product.description}</p>
+                        <div className="mt-4 flex justify-between items-center">
+                          {product.price && <p className="text-lg font-bold text-primary">${product.price.toFixed(2)}</p>}
+                          <Button asChild variant="outline">
+                            <Link href={`/products`}>View Details</Link>
+                          </Button>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
             </div>
             <div className="mt-12 text-center">
               <Button asChild size="lg">
