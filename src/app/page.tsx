@@ -10,6 +10,7 @@ import { collection, query, limit } from 'firebase/firestore';
 import { useFirestore } from '@/firebase';
 import type { Product } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
+import tools2 from '@/images/tools2.png';
 
 
 export default function Home() {
@@ -27,9 +28,8 @@ export default function Home() {
       <main className="flex-1">
         {/* Hero Section */}
         <section className="relative w-full h-[60vh] md:h-[80vh] text-primary-foreground">
-          
-            <Image
-              src="https://picsum.photos/seed/woodwork/1920/1080"
+             <Image
+              src={tools2}
               alt="Hero image of custom wood designs"
               fill
               className="object-cover"
