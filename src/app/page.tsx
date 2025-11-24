@@ -29,7 +29,7 @@ export default function Home() {
         <section className="relative w-full h-[60vh] md:h-[80vh] text-primary-foreground">
           
             <Image
-              src="https://picsum.photos/seed/hero/1200/800"
+              src="https://picsum.photos/seed/woodwork/1920/1080"
               alt="Hero image of custom wood designs"
               fill
               className="object-cover"
