@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { cn } from '@/lib/utils';
 import { Toaster } from '@/components/ui/toaster';
-import { CartProvider } from '@/context/cart-provider';
+import { CartProvider } from '@/context/cart-context';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
 import './globals.css';

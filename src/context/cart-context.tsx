@@ -1,149 +1,111 @@
 'use client';
 
-import React, { createContext, useContext, useState, useMemo, useCallback, useEffect } from 'react';
-import type { CartItem, Product } from '@/lib/types';
+import React, { createContext, useReducer, useEffect } from 'react';
+import type { Product, CartItem as CartItemType } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
-import { useCollection, useFirestore, useUser, addDocumentNonBlocking, deleteDocumentNonBlocking, updateDocumentNonBlocking, useMemoFirebase } from '@/firebase';
-import { collection, doc, writeBatch } from 'firebase/firestore';
 import { loadStripe } from '@stripe/stripe-js';
 
-// It's important to use NEXT_PUBLIC_ for client-side environment variables
 const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY!);
 
-interface CartContextType {
-  cartItems: CartItem[];
-  addToCart: (product: Product, quantity?: number) => void;
-  removeFromCart: (productId: string) => void;
-  updateQuantity: (quantity: number, productId: string) => void;
-  clearCart: () => void;
-  cartCount: number;
-  cartTotal: number;
-  handleCheckout: () => void;
-}
+type State = {
+  items: CartItemType[];
+};
 
-const CartContext = createContext<CartContextType | undefined>(undefined);
+type Action =
+  | { type: 'ADD_ITEM'; payload: Product }
+  | { type: 'UPDATE_QUANTITY'; payload: { id: string; quantity: number } }
+  | { type: 'REMOVE_ITEM'; payload: { id: string } }
+  | { type: 'CLEAR_CART' }
+  | { type: 'SET_STATE'; payload: State };
 
-export function CartProvider({ children }: { children: React.ReactNode }) {
-  const [localCartItems, setLocalCartItems] = useState<CartItem[]>([]);
-  const { toast } = useToast();
-  const { user } = useUser();
-  const firestore = useFirestore();
+const initialState: State = {
+  items: [],
+};
 
-  const cartCollectionRef = useMemoFirebase(() => user ? collection(firestore, `users/${user.uid}/carts`) : null, [user, firestore]);
-  const { data: firestoreCartItems, isLoading: isCartLoading } = useCollection<{productId: string, quantity: number}>(cartCollectionRef);
-  
-  const productsCollectionRef = useMemoFirebase(() => collection(firestore, 'products'), [firestore]);
-  const { data: products, isLoading: areProductsLoading } = useCollection<Product>(productsCollectionRef);
-
-  const cartItems = useMemo(() => {
-    if (!user) return localCartItems;
-    if (isCartLoading || areProductsLoading || !firestoreCartItems || !products) return [];
-
-    return firestoreCartItems.map(item => {
-      const product = products.find(p => p.id === item.productId);
-      return product ? { product, quantity: item.quantity } : null;
-    }).filter((item): item is CartItem => item !== null);
-  }, [user, localCartItems, firestoreCartItems, products, isCartLoading, areProductsLoading]);
-
-  // Sync local cart to firestore on login
-  useEffect(() => {
-    if (user && localCartItems.length > 0 && !isCartLoading) {
-      const batch = writeBatch(firestore);
-      localCartItems.forEach(localItem => {
-        const firestoreItem = firestoreCartItems?.find(fi => fi.productId === localItem.product.id);
-        if (firestoreItem) {
-          const newQuantity = firestoreItem.quantity + localItem.quantity;
-          const cartItemRef = doc(firestore, `users/${user.uid}/carts/${firestoreItem.id}`);
-          batch.update(cartItemRef, { quantity: newQuantity });
-        } else {
-          const cartItemRef = doc(collection(firestore, `users/${user.uid}/carts`));
-          batch.set(cartItemRef, { productId: localItem.product.id, quantity: localItem.quantity });
-        }
-      });
-      batch.commit().then(() => {
-        setLocalCartItems([]);
-      });
-    }
-  }, [user, localCartItems, firestoreCartItems, firestore, isCartLoading]);
-
-  const addToCart = useCallback((product: Product, quantity = 1) => {
-    if (user) {
-      const existingItem = firestoreCartItems?.find(item => item.productId === product.id);
-      if (existingItem) {
-        const cartItemRef = doc(firestore, `users/${user.uid}/carts/${existingItem.id}`);
-        updateDocumentNonBlocking(cartItemRef, { quantity: existingItem.quantity + quantity });
-      } else {
-        addDocumentNonBlocking(collection(firestore, `users/${user.uid}/carts`), { productId: product.id, quantity });
-      }
-    } else {
-      setLocalCartItems(prevItems => {
-        const existingItem = prevItems.find(item => item.product.id === product.id);
-        if (existingItem) {
-          return prevItems.map(item =>
-            item.product.id === product.id
-              ? { ...item, quantity: item.quantity + quantity }
-              : item
-          );
-        }
-        return [...prevItems, { product, quantity }];
-      });
-    }
-    toast({
-      title: "Item Added to Cart",
-      description: `${product.name} has been added to your cart.`,
-    });
-  }, [user, firestore, firestoreCartItems, toast]);
-
-  const removeFromCart = useCallback((productId: string) => {
-    if (user) {
-      const cartItem = firestoreCartItems?.find(item => item.productId === productId);
-      if (cartItem) {
-        const cartItemRef = doc(firestore, `users/${user.uid}/carts/${cartItem.id}`);
-        deleteDocumentNonBlocking(cartItemRef);
-      }
-    } else {
-      setLocalCartItems(prevItems => prevItems.filter(item => item.product.id !== productId));
-    }
-    toast({
-      title: "Item Removed",
-      description: "The item has been removed from your cart.",
-    });
-  }, [user, firestore, firestoreCartItems, toast]);
-
-  const updateQuantity = useCallback((quantity: number, productId: string) => {
-    if (quantity <= 0) {
-      removeFromCart(productId);
-      return;
-    }
-    if (user) {
-      const cartItem = firestoreCartItems?.find(item => item.productId === productId);
-      if (cartItem) {
-        const cartItemRef = doc(firestore, `users/${user.uid}/carts/${cartItem.id}`);
-        updateDocumentNonBlocking(cartItemRef, { quantity });
-      }
-    } else {
-      setLocalCartItems(prevItems =>
-        prevItems.map(item =>
-          item.product.id === productId ? { ...item, quantity } : item
-        )
+const cartReducer = (state: State, action: Action): State => {
+  switch (action.type) {
+    case 'ADD_ITEM': {
+      const existingItemIndex = state.items.findIndex(
+        (item) => item.id === action.payload.id
       );
+      if (existingItemIndex > -1) {
+        const newItems = [...state.items];
+        newItems[existingItemIndex].quantity += 1;
+        return { ...state, items: newItems };
+      }
+      const newItem: CartItemType = {
+        id: action.payload.id,
+        name: action.payload.name,
+        price: action.payload.price,
+        quantity: 1,
+        imageId: action.payload.imageId,
+      };
+      return { ...state, items: [...state.items, newItem] };
     }
-  }, [user, firestore, firestoreCartItems, removeFromCart]);
+    case 'UPDATE_QUANTITY': {
+        if (action.payload.quantity <= 0) {
+            return {
+                ...state,
+                items: state.items.filter(item => item.id !== action.payload.id),
+            };
+        }
+        return {
+            ...state,
+            items: state.items.map((item) =>
+                item.id === action.payload.id
+                ? { ...item, quantity: action.payload.quantity }
+                : item
+            ),
+        };
+    }
+    case 'REMOVE_ITEM':
+      return {
+        ...state,
+        items: state.items.filter((item) => item.id !== action.payload.id),
+      };
+    case 'CLEAR_CART':
+      return { ...state, items: [] };
+    case 'SET_STATE':
+        return action.payload;
+    default:
+      return state;
+  }
+};
 
-  const clearCart = useCallback(() => {
-    if (user) {
-        const batch = writeBatch(firestore);
-        firestoreCartItems?.forEach(item => {
-            const cartItemRef = doc(firestore, `users/${user.uid}/carts/${item.id}`);
-            batch.delete(cartItemRef);
-        });
-        batch.commit();
-    } else {
-        setLocalCartItems([]);
+export const CartContext = createContext<{
+  state: State;
+  dispatch: React.Dispatch<Action>;
+  handleCheckout: () => Promise<void>;
+}>({
+  state: initialState,
+  dispatch: () => null,
+  handleCheckout: async () => {},
+});
+
+export const CartProvider = ({ children }: { children: React.ReactNode }) => {
+  const [state, dispatch] = useReducer(cartReducer, initialState);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    try {
+      const storedCart = localStorage.getItem('cart');
+      if (storedCart) {
+        dispatch({ type: 'SET_STATE', payload: JSON.parse(storedCart) });
+      }
+    } catch (error) {
+        console.error("Failed to parse cart from localStorage", error);
     }
-  }, [user, firestore, firestoreCartItems]);
+  }, []);
+
+  useEffect(() => {
+    localStorage.setItem('cart', JSON.stringify(state));
+  }, [state]);
 
   const handleCheckout = async () => {
+    if (state.items.length === 0) {
+        toast({ title: 'Your cart is empty', variant: 'destructive' });
+        return;
+    }
     toast({ title: 'Redirecting to checkout...' });
     try {
       const response = await fetch('/api/checkout_sessions', {
@@ -151,7 +113,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ items: cartItems }),
+        body: JSON.stringify({ items: state.items.map(item => ({ product: {
+            id: item.id,
+            name: item.name,
+            price: item.price,
+            description: '', // You may need to fetch this if required by checkout
+            imageUrl: '',
+            category: '',
+            imageId: item.imageId
+        }, quantity: item.quantity })) }),
       });
 
       if (!response.ok) {
@@ -178,36 +148,9 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   };
 
 
-  const cartCount = useMemo(() => {
-    return cartItems.reduce((count, item) => count + item.quantity, 0);
-  }, [cartItems]);
-
-  const cartTotal = useMemo(() => {
-    return cartItems.reduce((total, item) => total + item.product.price * item.quantity, 0);
-  }, [cartItems]);
-
-  const value = useMemo(() => ({
-    cartItems,
-    addToCart,
-    removeFromCart,
-    updateQuantity,
-    clearCart,
-    cartCount,
-    cartTotal,
-    handleCheckout,
-  }), [cartItems, addToCart, removeFromCart, updateQuantity, clearCart, cartCount, cartTotal]);
-
   return (
-    <CartContext.Provider value={value}>
+    <CartContext.Provider value={{ state, dispatch, handleCheckout }}>
       {children}
     </CartContext.Provider>
   );
-}
-
-export function useCart() {
-  const context = useContext(CartContext);
-  if (context === undefined) {
-    throw new Error('useCart must be used within a CartProvider');
-  }
-  return context;
-}
+};
