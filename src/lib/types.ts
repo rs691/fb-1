@@ -39,6 +39,7 @@ export type Order = {
 }
 
 export type CartItem = {
+  id: string;
   product: Product;
   quantity: number;
 };
