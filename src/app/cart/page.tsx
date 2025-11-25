@@ -1,3 +1,4 @@
+
 "use client";
 
 import Image from "next/image";
@@ -28,7 +29,7 @@ export default function CartPage() {
 
   if (items.length === 0) {
     return (
-      <div className="container mx-auto px-4 py-16 text-center">
+      <div className="container mx-auto px-4 py-16 text-center animate-fade-in">
         <ShoppingCart className="mx-auto h-24 w-24 text-muted-foreground" />
         <h1 className="mt-8 text-4xl font-headline font-bold">Your Cart is Empty</h1>
         <p className="mt-4 text-muted-foreground">Looks like you haven't added anything to your cart yet.</p>
@@ -40,7 +41,7 @@ export default function CartPage() {
   }
 
   return (
-    <div className="container mx-auto px-4 py-16">
+    <div className="container mx-auto px-4 py-16 animate-fade-in">
        <div className="text-center mb-12">
         <h1 className="text-4xl md:text-5xl font-headline font-bold">Your Shopping Cart</h1>
       </div>

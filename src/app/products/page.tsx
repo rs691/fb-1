@@ -57,7 +57,7 @@ export default function ProductsPage() {
   const { data: products, isLoading } = useCollection<Product>(productsCollection);
 
   return (
-    <div className="container mx-auto px-4 py-16">
+    <div className="container mx-auto px-4 py-16 animate-fade-in">
       <div className="text-center mb-12">
         <h1 className="text-4xl md:text-5xl font-headline font-bold">Our Products</h1>
         <p className="mt-4 max-w-2xl mx-auto text-muted-foreground">
