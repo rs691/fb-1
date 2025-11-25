@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -5,8 +6,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
+import { signInWithEmailAndPassword } from "firebase/auth";
 
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth } from "@/firebase";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,7 +32,7 @@ type UserFormValue = z.infer<typeof formSchema>;
 
 export function LoginForm({ className }: React.ComponentProps<"form">) {
   const router = useRouter();
-  const { login } = useAuth();
+  const auth = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = React.useState(false);
 
@@ -45,22 +47,20 @@ export function LoginForm({ className }: React.ComponentProps<"form">) {
   const onSubmit = async (data: UserFormValue) => {
     setLoading(true);
     try {
-      const user = await login(data.email, data.password);
+      const userCredential = await signInWithEmailAndPassword(auth, data.email, data.password);
+      const user = userCredential.user;
       if (user) {
         toast({
           title: "Login Successful",
-          description: `Welcome back, ${user.name || user.email}!`,
+          description: `Welcome back, ${user.displayName || user.email}!`,
         });
         router.push("/");
-      } else {
-        throw new Error("Invalid credentials");
       }
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Login Failed",
-        description:
-          error instanceof Error ? error.message : "An unknown error occurred.",
+        description: "Invalid credentials. Please check your email and password.",
       });
     } finally {
       setLoading(false);

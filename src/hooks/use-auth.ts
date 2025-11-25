@@ -1,12 +1,8 @@
+
 "use client";
 
-import { useContext } from "react";
-import { AuthContext } from "@/context/auth-provider";
+// This file is no longer needed and can be removed.
+// The `useAuth` hook is now provided from `@/firebase/index.ts`
+// and uses the real Firebase context.
 
-export const useAuth = () => {
-  const context = useContext(AuthContext);
-  if (context === undefined) {
-    throw new Error("useAuth must be used within an AuthProvider");
-  }
-  return context;
-};
+export {};

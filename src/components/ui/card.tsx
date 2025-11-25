@@ -76,4 +76,16 @@ const CardFooter = React.forwardRef<
 ))
 CardFooter.displayName = "CardFooter"
 
-export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }
+const CardImage = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("relative h-64 w-full overflow-hidden", className)}
+    {...props}
+  />
+))
+CardImage.displayName = "CardImage"
+
+export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent, CardImage }

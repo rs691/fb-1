@@ -1,3 +1,4 @@
+
 "use client";
 
 import * as React from "react";
@@ -5,8 +6,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import * as z from "zod";
 import { useRouter } from "next/navigation";
+import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import { doc, setDoc } from "firebase/firestore";
 
-import { useAuth } from "@/hooks/use-auth";
+import { useAuth, useFirestore } from "@/firebase";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
@@ -37,7 +40,8 @@ type UserFormValue = z.infer<typeof formSchema>;
 
 export function RegisterForm({ className }: React.ComponentProps<"form">) {
   const router = useRouter();
-  const { register } = useAuth();
+  const auth = useAuth();
+  const firestore = useFirestore();
   const { toast } = useToast();
   const [loading, setLoading] = React.useState(false);
 
@@ -54,24 +58,35 @@ export function RegisterForm({ className }: React.ComponentProps<"form">) {
   const onSubmit = async (data: UserFormValue) => {
     setLoading(true);
     try {
-      const user = await register(data.name, data.email, data.password);
-      if (user) {
-        toast({
-          title: "Account Created",
-          description: "You have been successfully registered.",
-        });
-        router.push("/");
-      } else {
-        throw new Error("Registration failed");
-      }
+      const userCredential = await createUserWithEmailAndPassword(auth, data.email, data.password);
+      const user = userCredential.user;
+
+      await updateProfile(user, { displayName: data.name });
+
+      const userDocRef = doc(firestore, "users", user.uid);
+      await setDoc(userDocRef, {
+          uid: user.uid,
+          email: user.email,
+          displayName: data.name,
+      });
+
+      toast({
+        title: "Account Created",
+        description: "You have been successfully registered.",
+      });
+      router.push("/");
+
     } catch (error) {
+      const err = error as { code?: string, message: string };
+      let description = err.message;
+      if (err.code === "auth/email-already-in-use") {
+        description = "This email is already in use. Please try another one."
+      }
+
       toast({
         variant: "destructive",
         title: "Registration Failed",
-        description:
-          error instanceof Error
-            ? error.message
-            : "An unknown error occurred.",
+        description,
       });
     } finally {
       setLoading(false);

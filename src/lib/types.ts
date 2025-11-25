@@ -1,4 +1,4 @@
-import type { User as FirebaseUser } from 'firebase/auth';
+
 
 export type Product = {
   id: string;
@@ -6,8 +6,8 @@ export type Product = {
   price: number;
   imageUrl: string;
   description: string;
-  woodType: string;
   category: string;
+  imageId: string;
 };
 
 export type Project = {
@@ -15,8 +15,7 @@ export type Project = {
   title: string;
   imageUrl: string;
   description: string;
-  dateCompleted: string;
-  woodType: string;
+  date: string;
 };
 
 export type Event = {
@@ -40,13 +39,16 @@ export type Order = {
 
 export type CartItem = {
   id: string;
-  product: Product;
+  name: string;
+  price: number;
   quantity: number;
+  imageId: string;
 };
 
-export type UserProfile = {
-    id: string;
-    name:string;
+export type User = {
+    id?: string;
+    uid?: string;
+    name: string;
     email: string;
 }
 
@@ -57,9 +59,3 @@ export type Wood = {
     description: string;
     properties: string[];
 }
-
-<<<<<<< HEAD
-export type AppUser = FirebaseUser & UserProfile;
-=======
-export type AppUser = FirebaseUser & UserProfile;
->>>>>>> bce9c6f5d1909e58b85cce49eda75ba8e3b81ca4

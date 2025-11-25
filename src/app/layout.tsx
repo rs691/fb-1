@@ -1,8 +1,8 @@
+
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import { cn } from '@/lib/utils';
 import { Toaster } from '@/components/ui/toaster';
-import { AuthProvider } from '@/context/auth-provider';
 import { CartProvider } from '@/context/cart-provider';
 import Header from '@/components/header';
 import Footer from '@/components/footer';
@@ -40,7 +40,6 @@ export default function RootLayout({
         )}
       >
         <FirebaseClientProvider>
-          <AuthProvider>
             <CartProvider>
               <ThemeProvider
                 attribute="class"
@@ -55,7 +54,6 @@ export default function RootLayout({
                 <Toaster />
               </ThemeProvider>
             </CartProvider>
-          </AuthProvider>
         </FirebaseClientProvider>
       </body>
     </html>

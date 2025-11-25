@@ -1,6 +1,6 @@
 
 "use client";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardImage } from "@/components/ui/card";
 import { Calendar, MapPin } from "lucide-react";
 import { format } from "date-fns";
 import { useCollection, useFirestore, useMemoFirebase } from "@/firebase";
@@ -45,6 +45,7 @@ export default function EventsPage() {
                 </CardHeader>
                 <CardContent>
                 <CardDescription>{event.description}</CardDescription>
+                <CardImage>{event.imageUrl && <img src={event.imageUrl} alt={event.title} />}</CardImage>
                 </CardContent>
             </Card>
         )})}
