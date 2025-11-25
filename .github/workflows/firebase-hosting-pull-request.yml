@@ -1,0 +1,40 @@
+name: Deploy to Firebase App Hosting
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  build_and_deploy:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build application
+        run: npm run build
+        env:
+          NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY }}
+
+
+      - name: Deploy to Firebase App Hosting
+        uses: firebase/actions/setup-app-hosting@v0
+        with:
+          repo: ${{ github.repository }}
+          project_id: ${{ vars.FIREBASE_PROJECT_ID }}
+          service_account: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
