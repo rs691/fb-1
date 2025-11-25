@@ -23,6 +23,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
+import { errorEmitter } from "@/firebase/error-emitter";
+import { FirestorePermissionError } from "@/firebase/errors";
 
 const formSchema = z
   .object({
@@ -64,11 +66,23 @@ export function RegisterForm({ className }: React.ComponentProps<"form">) {
       await updateProfile(user, { displayName: data.name });
 
       const userDocRef = doc(firestore, "users", user.uid);
-      await setDoc(userDocRef, {
+      const userData = {
           uid: user.uid,
           email: user.email,
           displayName: data.name,
-      });
+          id: user.uid,
+      };
+
+      await setDoc(userDocRef, userData)
+        .catch(serverError => {
+            const permissionError = new FirestorePermissionError({
+                path: userDocRef.path,
+                operation: 'create',
+                requestResourceData: userData,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        });
+
 
       toast({
         title: "Account Created",

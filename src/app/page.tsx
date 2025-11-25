@@ -11,6 +11,7 @@ import { useFirestore } from '@/firebase';
 import type { Product } from '@/lib/types';
 import { Skeleton } from '@/components/ui/skeleton';
 import tools2 from '@/images/tools2.png';
+import heroImage4 from '@/images/heroImage4.png';
 
 
 export default function Home() {
@@ -29,7 +30,7 @@ export default function Home() {
         {/* Hero Section */}
         <section className="relative w-full h-[60vh] md:h-[80vh] text-primary-foreground">
              <Image
-              src={tools2}
+              src={heroImage4}
               alt="Hero image of custom wood designs"
               fill
               className="object-cover"

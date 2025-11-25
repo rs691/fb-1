@@ -46,9 +46,9 @@ export type CartItem = {
 };
 
 export type User = {
-    id?: string;
-    uid?: string;
-    name: string;
+    id: string;
+    uid: string;
+    displayName: string;
     email: string;
 }
 
