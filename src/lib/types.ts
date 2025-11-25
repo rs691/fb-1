@@ -1,34 +1,61 @@
-export interface User {
-  id: string;
-  email: string;
-  name?: string;
-}
+import type { User as FirebaseUser } from 'firebase/auth';
 
-export interface Product {
+export type Product = {
   id: string;
   name: string;
-  description: string;
   price: number;
-  imageId: string;
-  stock: number;
-}
-
-export interface Project {
-  id: string;
-  name: string;
+  imageUrl: string;
   description: string;
-  imageId: string;
+  woodType: string;
+  category: string;
+};
+
+export type Project = {
+  id: string;
+  title: string;
+  imageUrl: string;
+  description: string;
   dateCompleted: string;
-}
+  woodType: string;
+};
 
-export interface Event {
+export type Event = {
   id: string;
-  name: string;
+  title: string;
   description: string;
-  date: string;
   location: string;
+  startTime: string;
+  endTime: string;
+  imageUrl: string;
+};
+
+export type Order = {
+    id: string;
+    userId: string;
+    orderDate: string;
+    totalAmount: number;
+    status: string;
+    productIds: string[];
 }
 
-export interface CartItem extends Product {
+export type CartItem = {
+  id: string;
+  product: Product;
   quantity: number;
+};
+
+export type UserProfile = {
+    id: string;
+    name:string;
+    email: string;
 }
+
+export type Wood = {
+    id: string;
+    name: string;
+    imageUrl: string;
+    description: string;
+    properties: string[];
+}
+
+export type AppUser = FirebaseUser & UserProfile;
