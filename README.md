@@ -1,4 +1,4 @@
-# Woodify: Bespoke Wood Creations
+# Woodify: Bespoke Wood Creations by Robert Stewart
 
 Welcome to the Woodify demo application, a modern e-commerce and portfolio website designed for a custom woodworking business. This app showcases a complete user journey, from browsing products to making a purchase, all within a clean and responsive interface.
 

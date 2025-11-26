@@ -1,11 +1,11 @@
 
 'use client';
 
-import Image from 'next/image';
 import { Card } from '@/components/ui/card';
 import { useCollection, useFirestore, useMemoFirebase } from '@/firebase';
 import type { Project } from '@/lib/types';
 import { collection } from 'firebase/firestore';
+import Image from 'next/image';
 
 export default function ProjectsPage() {
   const firestore = useFirestore();
@@ -30,8 +30,7 @@ export default function ProjectsPage() {
                   <div className="overflow-hidden">
                     <Image
                       src={project.imageUrl}
-                      alt="project image"
-                      // alt={project.title}
+                      alt="project image title"
                       width={800}
                       height={600}
                       className="h-auto w-full object-cover transition-transform duration-300 group-hover:scale-105"
