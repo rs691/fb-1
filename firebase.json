@@ -1,7 +1,10 @@
 {
   "hosting": {
-    "site": "studio-7794071366-c1503",
-    "public": "out",
-    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"]
+    "public": "public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
   }
 }
