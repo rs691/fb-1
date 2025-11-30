@@ -15,7 +15,7 @@
     "indexes": "firestore.indexes.json"
   },
   "apphosting": {
-    "backendId": "apphosting-studio-2289885776-3fc9e.us-central1.hosted.app/",
+    "backendId": "fb-1--studio-2289885776-3fc9e.us-central1.hosted.app",
     "rootDir": "/",
     "ignore": [
       "node_modules",
