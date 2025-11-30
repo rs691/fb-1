@@ -1,146 +1,159 @@
 /**
- * This ruleset enforces a security model with two primary patterns:
- * 1. Strict user-ownership for personal data.
- * 2. Public read access with administrator-only writes for shared content.
+ * This ruleset enforces a strict security model that segregates public and private data.
  *
  * Core Philosophy:
- * The rules are designed to be secure by default. Access is denied unless explicitly
- * granted. User data is treated as private and isolated, while application content
- * like products and events is publicly visible to all users, including those not
- * signed in.
+ * The rules are designed around a clear separation of concerns. Top-level collections like
+ * `products`, `projects`, and `events` are treated as public, world-readable content.
+ * All user-specific data, such as profiles and shopping carts, is nested under a
+ * `/users/{userId}` path, enforcing a strict user-ownership model where only the
+ * authenticated user can access their own information.
  *
  * Data Structure:
- * The data is organized into flat, top-level collections:
- * - /users/{userId}: Stores private user profile data.
- * - /products/{productId}: Publicly visible product listings.
- * - /projects/{projectId}: Publicly visible project showcases.
- * - /events/{eventId}: Publicly visible event details.
+ * - /users/{userId}: Contains private user profile data.
+ * - /users/{userId}/carts/{cartId}: Contains user-specific shopping cart data.
+ * - /products/{productId}: Publicly readable product information.
+ * - /projects/{projectId}: Publicly readable portfolio project information.
+ * - /events/{eventId}: Publicly readable event information.
  *
  * Key Security Decisions:
- * - Admin Role: Write access to public collections (/products, /projects, /events)
- *   is restricted to administrators. An admin is identified by a custom authentication
- *   token claim (`request.auth.token.admin == true`). This claim must be set by a
- *   trusted backend server.
- * - User Data Privacy: A user can only access their own document within the /users
- *   collection. Listing the entire /users collection is explicitly forbidden to
- *   prevent user enumeration attacks.
- * - Data Integrity: When a user document is created, its internal `id` field must
- *   match the document's ID in the path to ensure relational consistency. This ID
- *   is immutable and cannot be changed on update.
- * - Prototyping Flexibility: Data schemas are not strictly enforced in this ruleset.
- *   This allows for rapid development and API changes without needing to update
- *   security rules for every field modification. Validation is focused solely on
- *   authorization and relational integrity.
+ * - Public Data: `products`, `projects`, and `events` are readable by anyone, including
+ *   unauthenticated users, to support the website's public-facing content. Writes to
+ *   these collections are currently disabled pending the implementation of an admin role system.
+ * - Private Data: All data under `/users/{userId}` is strictly private. A user can only
+ *   read or write documents within their own data tree.
+ * - No User Listing: To protect user privacy, it is not possible to list all documents
+ *   in the top-level `users` collection.
+ * - Relational Integrity: On creation, a user's profile document must contain an `id` field
+ *   that matches their authentication UID. This field is immutable to prevent re-association.
+ *
+ * Denormalization for Authorization:
+ * This ruleset primarily relies on path-based authorization (e.g., checking `{userId}` in
+ * the path against `request.auth.uid`), which is highly performant and avoids costly `get()`
+ * calls for authorization checks.
+ *
+ * Structural Segregation:
+ * The security model is built on structural segregation. Private user data (`carts`) is
+ * placed in a subcollection under the user's document, while public data (`products`)
+ * exists in separate top-level collections. This makes security rules simpler and queries
+ * more efficient.
  */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // ----------------------------------------------------------------------
+    // ------------------------------------------------------------------------
     // Helper Functions
-    // ----------------------------------------------------------------------
+    // ------------------------------------------------------------------------
 
     /**
-     * Checks if a user is authenticated.
+     * Returns true if the user is authenticated.
      */
     function isSignedIn() {
       return request.auth != null;
     }
 
     /**
-     * Checks if the requesting user is the owner of a document.
-     * @param userId The UID of the user to check against.
+     * Returns true if the requesting user's UID matches the provided userId.
+     * This is the primary function for enforcing document ownership.
      */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
     /**
-     * Checks if the requesting user has an admin custom claim.
-     * This claim must be set via a trusted backend process.
+     * Returns true if the document already exists and the requesting user
+     * is the owner. Used for safe updates and deletes.
      */
-    function isAdmin() {
-      return isSignedIn() && request.auth.token.admin == true;
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
     }
 
-    // ----------------------------------------------------------------------
-    // Collection: users
-    // ----------------------------------------------------------------------
+    // ------------------------------------------------------------------------
+    // Collection Rules
+    // ------------------------------------------------------------------------
 
     /**
-     * @description Controls access to user profile documents.
+     * @description Manages user profiles. A user can create their own profile,
+     *   and then only they can read, update, or delete it.
      * @path /users/{userId}
-     * @allow A signed-in user (auth.uid: 'user_abc') can create, read, update, or delete their own document at /users/user_abc.
-     * @deny A user (auth.uid: 'user_xyz') is blocked from reading or writing to /users/user_abc.
-     * @deny Anonymous or authenticated users are blocked from listing all documents in the /users collection.
+     * @allow (create) An authenticated user creates their own profile document, where the document ID `{userId}` matches their auth UID.
+     * @deny (list) A user attempts to list all documents in the `/users` collection.
+     * @deny (update) A user tries to modify another user's profile.
      * @principle Restricts access to a user's own data tree and prevents user enumeration.
      */
     match /users/{userId} {
       allow get: if isOwner(userId);
-      allow list: if false;
+      allow list: if false; // Disallow listing users for privacy
       allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isOwner(userId) && resource != null && request.resource.data.id == resource.data.id;
-      allow delete: if isOwner(userId) && resource != null;
+      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userId);
+
+      /**
+       * @description Manages a user's shopping carts. Only the owner of the user
+       *   document can manage carts within it.
+       * @path /users/{userId}/carts/{cartId}
+       * @allow (create) An authenticated user adds a cart to their own `/carts` subcollection.
+       * @deny (get) An authenticated user tries to read a cart from another user's profile.
+       * @principle Enforces hierarchical ownership; permissions are inherited from the parent user document.
+       */
+      match /carts/{cartId} {
+        allow get: if isOwner(userId);
+        allow list: if isOwner(userId);
+        allow create: if isOwner(userId);
+        allow update: if isExistingOwner(userId);
+        allow delete: if isExistingOwner(userId);
+      }
     }
 
-    // ----------------------------------------------------------------------
-    // Collection: products
-    // ----------------------------------------------------------------------
-
     /**
-     * @description Controls access to product listings.
+     * @description Manages product information. Products are publicly readable by all users.
+     *   Writes are currently disallowed until an admin role is implemented.
      * @path /products/{productId}
-     * @allow Any user, including anonymous ones, can read (get, list) any product document.
-     * @allow An admin user (auth.token.admin == true) can create, update, or delete a product.
-     * @deny A non-admin user is blocked from creating, updating, or deleting any product.
-     * @principle Allows public read access for all, but restricts content management to privileged admin users.
+     * @allow (get, list) Any user, authenticated or not, can view a product or list all products.
+     * @deny (create, update, delete) Any user attempts to modify product data.
+     * @principle Public read access for general content, with writes locked down for security.
      */
     match /products/{productId} {
       allow get: if true;
       allow list: if true;
-      allow create: if isAdmin();
-      allow update: if isAdmin() && resource != null;
-      allow delete: if isAdmin() && resource != null;
+      // CRITICAL: Cannot implement owner-only writes. The 'Product' entity is missing an 'ownerId' or 'adminId' field.
+      allow create: if false; // TODO: Add admin validation once an admin system is implemented.
+      allow update: if false; // TODO: Add admin validation once an admin system is implemented.
+      allow delete: if false; // TODO: Add admin validation once an admin system is implemented.
     }
 
-    // ----------------------------------------------------------------------
-    // Collection: projects
-    // ----------------------------------------------------------------------
-
     /**
-     * @description Controls access to project showcases.
+     * @description Manages portfolio projects. Projects are publicly readable by all users.
+     *   Writes are currently disallowed until an admin role is implemented.
      * @path /projects/{projectId}
-     * @allow Any user, including anonymous ones, can read (get, list) any project document.
-     * @allow An admin user (auth.token.admin == true) can create, update, or delete a project.
-     * @deny A non-admin user is blocked from creating, updating, or deleting any project.
-     * @principle Allows public read access for all, but restricts content management to privileged admin users.
+     * @allow (get, list) Any user, authenticated or not, can view a project or list all projects.
+     * @deny (create, update, delete) Any user attempts to modify project data.
+     * @principle Public read access for general content, with writes locked down for security.
      */
     match /projects/{projectId} {
       allow get: if true;
       allow list: if true;
-      allow create: if isAdmin();
-      allow update: if isAdmin() && resource != null;
-      allow delete: if isAdmin() && resource != null;
+      // CRITICAL: Cannot implement owner-only writes. The 'Project' entity is missing an 'ownerId' or 'adminId' field.
+      allow create: if false; // TODO: Add admin validation once an admin system is implemented.
+      allow update: if false; // TODO: Add admin validation once an admin system is implemented.
+      allow delete: if false; // TODO: Add admin validation once an admin system is implemented.
     }
 
-    // ----------------------------------------------------------------------
-    // Collection: events
-    // ----------------------------------------------------------------------
-
     /**
-     * @description Controls access to event details.
+     * @description Manages event information. Events are publicly readable by all users.
+     *   Writes are currently disallowed until an admin role is implemented.
      * @path /events/{eventId}
-     * @allow Any user, including anonymous ones, can read (get, list) any event document.
-     * @allow An admin user (auth.token.admin == true) can create, update, or delete an event.
-     * @deny A non-admin user is blocked from creating, updating, or deleting any event.
-     * @principle Allows public read access for all, but restricts content management to privileged admin users.
+     * @allow (get, list) Any user, authenticated or not, can view an event or list all events.
+     * @deny (create, update, delete) Any user attempts to modify event data.
+     * @principle Public read access for general content, with writes locked down for security.
      */
     match /events/{eventId} {
       allow get: if true;
       allow list: if true;
-      allow create: if isAdmin();
-      allow update: if isAdmin() && resource != null;
-      allow delete: if isAdmin() && resource != null;
+      // CRITICAL: Cannot implement owner-only writes. The 'Event' entity is missing an 'ownerId' or 'adminId' field.
+      allow create: if false; // TODO: Add admin validation once an admin system is implemented.
+      allow update: if false; // TODO: Add admin validation once an admin system is implemented.
+      allow delete: if false; // TODO: Add admin validation once an admin system is implemented.
     }
   }
 }
