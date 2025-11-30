@@ -1,7 +1,7 @@
 // This is a placeholder for your Firebase configuration.
 // In a real application, you would initialize Firebase here.
 // For example:
-/*
+
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
@@ -21,7 +21,6 @@ const app = initializeApp(firebaseConfig);
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
-*/
 
 // Since we are mocking, we export empty objects.
 export const auth = {};

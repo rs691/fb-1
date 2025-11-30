@@ -1,12 +1,12 @@
 "use client";
 
-import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useCart } from '@/hooks/use-cart';
+import { useToast } from '@/hooks/use-toast';
 import type { Product } from '@/lib/types';
 import { ShoppingCart } from 'lucide-react';
-import { useToast } from '@/hooks/use-toast';
+import Image from 'next/image';
 
 interface ProductCardProps {
   product: Product;
@@ -45,7 +45,7 @@ export function ProductCard({ product }: ProductCardProps) {
       </CardContent>
       <CardFooter className="flex items-center justify-between p-6 pt-0">
         <p className="text-2xl font-semibold text-primary">
-          ${product.price.toLocaleString()}
+          ${product.price.toFixed(2)}
         </p>
         <Button onClick={handleAddToCart}>
           <ShoppingCart className="mr-2 h-4 w-4" />
